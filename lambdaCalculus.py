@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import logging, sys
-
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+import logging, sys, itertools
 
 # a simple set of functions that can read lambda expressions as string literals.
 # The "interal" representation of lambda expressions avoids classes and just
@@ -49,29 +47,20 @@ def internalize(e):
     lambda abtraction is represented by a pair (param, e)
     lambda application is represented by a list [e1,e2]
     """
-    # var case
+    # variable/symbol case
     if type(e) == str:
-        # logging.debug("returning token: " + e)
         return e
     # lambda abstraction case - convert to a tuple
     if len(e) > 3 and e[2] == '.':
         return (e[1], internalize(e[3:]))
     if type(e) == tuple:
-        # logging.debug("internalized lambda application of " + e[0] + " to ", e[1])
-        # logging.debug("passing right hand side to internalize")
         return (e[0],internalize(e[1]))
     else:
         if "\\" in e:
-            # logging.debug("non parenthesised lambda application in ", e)
             # eg. "x y \z . z t q" where the lamba is in some arbitrary position
-            # should be x y \z . z
             for (i,x) in enumerate(e):
                 if x == '\\': # find the first occurrence (recursive)
-                    # logging.debug("found occurrence of '\\' at position " + str(i))
-                    lhs = e[:i]
-                    rhs = e[i:]
-                    new_rhs = internalize(rhs)
-                    e = lhs + [new_rhs]
+                    e = e[:i] + [internalize(e[i:])]
         # we now reduce turning [x, y, z] into [[x, y], z]
         ys = [internalize(x) for x in e]
         return reduce(lambda x,y: [x] + [y], ys)
@@ -104,75 +93,94 @@ def alpha_renaming(e,dic={},depth=0):
         # still only two items in the list :)
         return map(lambda x : alpha_renaming(x,dic,depth), e)
 
-######################################################################################
-
-def replace_symbol(lists, old, new):
-    # print "replacing variable " + old + " with " + parsed_to_string(new) + " in " + parsed_to_string(lists)
-    if type(lists) != list:
-        return new if lists == old else lists
-    else:
-        return map(lambda x: replace_symbol(x,old,new), lists)
 
 ######################################################################################
 
 def replace_var(expr, var, term):
-    # try to replace all occurences of var with term
     if type(expr) == str:
         return term if expr == var else expr
     if type(expr) == tuple:
         if expr[0] == term:
-            raise ValueError("term to replace is identical to param in lambda abstraction!") # should never happen!
+            raise ValueError("term to replace is identical to param in lambda abstraction!")
         return (expr[0], replace_var(expr[1],var,term))
     if type(expr) == list:
         return map(lambda x: replace_var(x,var,term),expr)
 
 def beta_reduction(e, args=[]):
-    # print ("args = ", args)
-     # append and pop to/from the end of args last in first out (LIFO)
     if type(e) == list:
-        # print ("application of " +  internalized_to_string(e[0]) + " to " + internalized_to_string(e[1]))
         if type(e[0]) == str:
-            # print ("no further reduction possible")
             args.reverse()
             args.insert(0, e)
             return reduce(lambda x,y: [x] + [y], args)
         else:
             args.append(e[1])
-            return beta_reduction(e[0]) # note that we do not evaluate the argument! are we lazy?
+            return beta_reduction(e[0]) # we do not evaluate the argument! lazy.
     if type(e) == tuple:
         if not args:
-            # print ("no args to apply, returning lambda abstraction")
             return e
         else:
             arg = args.pop()
-            # print ("replacing " +  internalized_to_string(e[0]) + " with " + internalized_to_string(arg) + " in " + internalized_to_string(e[1]))
-            return beta_reduction(replace_var(e[1],e[0],arg)) # where e[1] is the body, e[0] is the bound lambda variable
+            return beta_reduction(replace_var(e[1],e[0],arg))
     if type(e) == str:
-        print ("get to symbol: " + e)
         if args:
             arg = args.pop()
-            return beta_reduction([e,arg]) # should lead to "no further reduction possible"
+            return beta_reduction([e,arg])
         else:
             return e
 
 ######################################################################################
 
-def parse(xs):
-    return internalize(parens_to_lists(tokenize(xs)))
+def identical_strings_up_to_naming(e1,e2):
+    # assumes both e1 and e2 are STRINGS in normal form
+    u1 = tokenize(e1)
+    u2 = tokenize(e2)
+    if len(u1) != len(u2):
+        return False
+    d = {}
+    for (x,y) in zip(u1,u2):
+        if x in d:
+            if d[x] != y:
+                return False
+        else:
+            d[x] = y
+    return True
 
 ######################################################################################
+
+
+
+######################################################################################
+
+def string_to_internalized(xs,lookup=None):
+    e = tokenize(xs)
+    if lookup:
+        kv = {}
+        for x in e:
+            if x in lookup:
+                kv[x] = lookup[x]
+
+        u = internalize(parens_to_lists(e))
+
+        for (k,v) in kv.items():
+            u = replace_var(u, k, v)
+        # print internalized_to_string(u)
+        return beta_reduction(alpha_renaming(u))
+    else:
+        return beta_reduction(alpha_renaming(internalize(parens_to_lists(e))))
+
+
+######################################################################################
+
+d = {}
+d['I'] = string_to_internalized(r"\x.x")
 
 if __name__ == '__main__':
     try:
         xs = sys.argv[1]
-        e = parse(xs)
-        # print(e)
-        # print(internalized_to_string(e))
-        a = alpha_renaming(e)
-        # print(internalized_to_string(a))
-        # print(internalized_to_string(a, strip_ids=True))
-        b = beta_reduction(a)
-        print(internalized_to_string(b, strip_ids=True))
+        print d['I']
+        i = string_to_internalized(xs, lookup=d)
+        print internalized_to_string(i, strip_ids=True)
+
 
     except IndexError:
         print "pass a lambda expression eg. \'\\x. x x x\'"
