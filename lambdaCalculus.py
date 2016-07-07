@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 
 def tokenize(x):
     # """
@@ -80,4 +81,8 @@ def tests():
     print "***************************************"
 
 if __name__ == '__main__':
-    tests()
+    try:
+        input = sys.argv[1]
+        print parsed_to_string(parse(input))
+    except IndexError:
+        print "pass a lambda expression eg. \'\\x. x x x\'"
