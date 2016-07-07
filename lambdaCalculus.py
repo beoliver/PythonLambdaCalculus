@@ -1,11 +1,19 @@
+#!/usr/bin/env python
 
-# we will assume that we are parsing raw strings which means that we can use \ without having to escape it.
+def tokenize(x):
+    # """
+    # convert a string literal (eg. r"(\x. x x) y") into a list of tokens
+    # ["(", "\\", "x", ".", "x", "x", ")", "y", ")"]
+    # no real need to use regex as we only have 4 special characters!
+    # """
+    y = x.replace('.',' . ').replace('(',' ( ').replace(')',' ) ').replace('\\',' \\ ')
+    return y.split()
 
-def tokenize(string):
-    xs = string.replace('.',' . ').replace('(',' ( ').replace(')',' ) ').replace('\\',' \\ ')
-    return xs.split()
 
-def parens_to_nested_lists(xs):
+def parens_to_lists(xs):
+    """
+    used to create an initial nested list from tokenized input
+    """
     stack = [[]]
     for x in xs:
         if x == '(':
@@ -22,51 +30,54 @@ def parens_to_nested_lists(xs):
     k = stack.pop()
     return k.pop() if len(k) == 1 else k
 
-def add_explicit_application_lists(xs):
-    if not xs:
-        return xs
-    if len(xs) > 3:
-        if xs[2] == '.':
-            rhs = xs[3:]
-            return xs[0:3] + apply_list(rhs)
-    else:
-        for i in range(len(xs)):
-            if type(xs[i]) == list:
-                xs[i] = apply_list(xs[i])
-    if len(xs) == 2:
-        return xs # or [xs] ?
-    if len(xs) < 2:
-        return xs
-    base = [xs[0],xs[1]]
-    for i in range(2,len(xs)):
-        base = [base, xs[i]]
-    return [base]
 
-def add_explicit_lambda_lists(xs):
+def explicit_sublists(xs):
+    """
+    make application and lambda abstraction explicit
+    """
+    # var case
     if type(xs) != list:
         return xs
-    if xs[0] =='\\':
-        rhs = add_explicit_lambda_lists(xs[3:])
-        new = [xs[:3] + rhs]
-        return new[0] if len(new) == 1 else new
+    if len(xs) > 3 and xs[2] == '.':
+        # lambda abstraction case
+        return xs[:3] + [explicit_sublists(xs[3:])]
     else:
-        return map(add_explicit_lambda_lists, xs)
+        if "\\" in xs:
+            # we need to enclose the occurrences of lambda
+            # eg. "x \y . y" where the lamba is in some arbitrary position
+            for (i,x) in enumerate(xs):
+                if x == '\\': # find the first occurrence (recursive)
+                    xs = xs[:i] + [explicit_sublists(xs[i:])]
+        # we now reduce turning [x, y, z] into [[x, y], z]
+        return reduce(lambda x,y: [x] + [y], [explicit_sublists(x) for x in xs])
 
-def nested_lists_to_string(xs,left="(", right=")"):
+
+######################################################################################
+
+def parse(xs):
+    return explicit_sublists(parens_to_lists(tokenize(xs)))
+
+def parsed_to_string(xs):
     if type(xs) == list:
-        return left + ' '.join(internalized_to_string(x) for x in xs) + right
+        return '(' + ' '.join(parsed_to_string(x) for x in xs) + ')'
     else:
         return xs
 
+######################################################################################
 
-def parse(string):
-    new = add_explicit_lambda_lists(add_explicit_application_brackets(parens_to_nested_lists(tokenize(string))))
-    return new
+def tests():
+    t1 = r'(\x. \y. \z. x y z) t'
+    print(t1)
+    print(parsed_to_string(parse(t1)))
+    print "***************************************"
+    t2 = r'\x. \y. \z. x y z'
+    print(t2)
+    print(parsed_to_string(parse(t2)))
+    print "***************************************"
+    t3 = r'\x. \y. x y \z . z x'
+    print(t3)
+    print(parsed_to_string(parse(t3)))
+    print "***************************************"
 
-def pprint_parsed(lists):
-    print nested_lists_to_string(lists).replace("\\ ","\\").replace(" . ", ".")
-
-
-# >>> t = parse(r'(\x. \y. \z. x y z) t')
-# >>> pprint_parsed(t)
-# ((\x.\y.\z.((x y) z)) t)
+if __name__ == '__main__':
+    tests()
