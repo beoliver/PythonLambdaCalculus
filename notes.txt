@@ -27,3 +27,26 @@ convert beta reduction into normalized (x's indexed from 0) form.
 we can now compare reduced expressions as is they are the same they will be identical!
 
 
+clearly our "pure functions" rely heavily on magic values, this should be encapsulated.
+But importantly, this magic is only required when we want to run interactively. If we just want to evaluate 
+a single expression that does not involve variable substritution with previously defined expressions then
+we need no global state. Evaluating a single expression has no concept of definition lookups.
+
+lamba_calculus_pure
+  alpha_conversion(expr, counter) -> alpha converted expr, variable indexing starts from value of itertools.count() 
+  beta_reduction(expr)            -> reduced expr
+  normalize(expr)                 -> (normalized expr, number of bound variables)
+  evaluate(expr)                  -> takes an internal representation, performs all reductions. (wraps alpha,beta,norm)
+
+lamba_calculus_interactive
+from lamba_calculus_pure import alpha_conversion, beta_reduction, normalization
+from itertools import count
+
+__global_variable_counter = count()
+
+
+
+
+
+
+
