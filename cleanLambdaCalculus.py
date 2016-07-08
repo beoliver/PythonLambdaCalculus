@@ -10,8 +10,7 @@ def tokenize(input_string):
     # ["(", "\\", "x", ".", "x", "x", ")", "y", ")"]
     # no real need to use regex as we only have 4 special characters!
     replacements = ('.',' . '), ('(',' ( '), (')',' ) '), ('\\',' \\ ')
-    r = reduce(lambda a, kv: a.replace(*kv), replacements, input_string).split()
-    return list(r) # return a COPY of the list
+    return reduce(lambda a, kv: a.replace(*kv), replacements, input_string).split()
 
 def parens_to_lists(xs):
     stack = [[]]
@@ -47,29 +46,22 @@ def internalize_recursive(e):
         ys = [internalize_recursive(x) for x in e]
         return reduce(lambda x,y: [x] + [y], ys)
 
-########################################################################################
-########################################################################################
-
-def internalize(xs, tokens=False):
-    try:
-        if tokens:
-            return internalize_recursive(parens_to_lists(xs))
-        else:
-            return internalize_recursive(parens_to_lists(tokenize(xs)))
-    except ValueError as e:
-        print e
 
 ########################################################################################
 
-def internal_to_string(e, strip_ids=False):
+def internalize(string):
+    return internalize_recursive(parens_to_lists(tokenize(string)))
+
+########################################################################################
+
+def internal_to_string(e, ids=False):
     if type(e) == str:
-        return e.split('_')[0] if strip_ids else e
+        return e.split('_')[0] if not ids else e
     if type(e) == tuple:
         left, mid, right = '(\\', '.', ')'
     if type(e) == list:
         left, mid, right = '(', ' ', ')'
-    return left + mid.join(map(lambda x: internal_to_string(x,strip_ids), e)) + right
-
+    return left + mid.join(map(lambda x: internal_to_string(x,ids), e)) + right
 
 ########################################################################################
 
@@ -85,39 +77,43 @@ def replace_var(e, var, term):
 
 ########################################################################################
 
-def alpha_conversion(e, mappings={}, depth=0):
-    if type(e) == tuple:
-        eid = e[0] + "_" + str(depth)
-        mappings[e[0]] = eid
-        return (eid, alpha_conversion(e[1], mappings, depth+1))
-    if type(e) == str:
-        return mappings.get(e,e)
-    if type(e) == list:
-        return map(lambda x : alpha_conversion(x,mappings,depth), e)
+def alpha_conversion(e):
+    def alpha_conversion_r(e, mappings, depth):
+        if type(e) == tuple:
+            eid = e[0] + "_" + str(depth)
+            mappings[e[0]] = eid
+            return (eid, alpha_conversion_r(e[1], mappings, depth+1))
+        if type(e) == str:
+            return mappings.get(e,e)
+        if type(e) == list:
+            return map(lambda x : alpha_conversion_r(x,mappings,depth), e)
+    return alpha_conversion_r(e, {}, 0)
 
 ########################################################################################
 
-def beta_reduction(e, args=[]):
-    if type(e) == list:
-        if type(e[0]) == str:
-            args.reverse()
-            args.insert(0, e)
-            return reduce(lambda x,y: [x] + [y], args)
-        else:
-            args.append(e[1])
-            return beta_reduction(e[0]) # we do not evaluate the argument! lazy.
-    if type(e) == tuple:
-        if not args:
-            return e
-        else:
-            arg = args.pop()
-            return beta_reduction(replace_var(e[1],e[0],arg))
-    if type(e) == str:
-        if args:
-            arg = args.pop()
-            return beta_reduction([e,arg])
-        else:
-            return e
+def beta_reduction(e):
+    def beta_reduction_r(e, args):
+        if type(e) == list:
+            if type(e[0]) == str:
+                args.reverse()
+                args.insert(0, e)
+                return reduce(lambda x,y: [x] + [y], args)
+            else:
+                args.append(e[1])
+                return beta_reduction_r(e[0],args)
+        if type(e) == tuple:
+            if not args:
+                return e
+            else:
+                arg = args.pop()
+                return beta_reduction_r(replace_var(e[1],e[0],arg),args)
+        if type(e) == str:
+            if args:
+                arg = args.pop()
+                return beta_reduction_r([e,arg],args)
+            else:
+                return e
+    return beta_reduction_r(e, [])
 
 ########################################################################################
 
@@ -127,21 +123,18 @@ class LambdaExpression(object):
     a simple wrapper for lambda expressions. Allows us to keep multiple
     representations at the same time etc.
     """
-    def __init__(self):
-        self.internal = None
-    def fromString(self,s):
-        assert self.internal == None
+    def __init__(self,s):
         self.internal = beta_reduction(alpha_conversion(internalize(s)))
     def toString(self):
-        return internal_to_string(self.internal, strip_ids=True) if self.internal else ''
+        return internal_to_string(self.internal,ids=False) if self.internal else ''
 
 
 if __name__ == '__main__':
+
     try:
         string = sys.argv[1]
 
-        e = LambdaExpression()
-        e.fromString(string)
+        e = LambdaExpression(string)
         print e.toString()
 
     except IndexError:
