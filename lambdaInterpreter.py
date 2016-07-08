@@ -1,35 +1,57 @@
 #!/usr/bin/env python
 import sys
-from lambdaCalculus import string_to_internalized, internalized_to_string
+from cleanLambdaCalculus import LambdaExpression
 import readline
 
 import cmd
 
+header1 = """
+    \\\\      |
+     \\\\     |
+    //\\\\    |
+   //  \\\\   |
+  //    \\\\  |
+"""
 
+#########################################################################
+variableSeed = 0
 glob_dict = {}
+#########################################################################
 
 class LambdaEvaluator(cmd.Cmd):
     """Simple command processor example."""
 
     prompt = 'prompt: '
-    intro = "A shitty REPL that doesn't work! HAVE FUN"
+    intro = header1
 
     def default(self, line):
-        i = string_to_internalized(line,lookup=glob_dict)
-        print internalized_to_string(i, strip_ids=True)
+        global variableSeed
+        e = LambdaExpression(line, id_prefix=str(variableSeed), lookup=glob_dict)
+        variableSeed += 1
+        # print e.beta
+        print e.toString(ids=False)
 
     def do_let(self, line):
+        global variableSeed
+        if not line:
+            print "let <var> = <expr>"
+            return
         xs = line.split()
         if xs[1] != '=':
             print "let <var> = <expr>"
+            return
         else:
-            ys = ''.join(xs[2:])
-            print ys
-            t = string_to_internalized(ys, lookup=glob_dict)
-            glob_dict[xs[0]] = internalized_to_string(t, strip_ids=True)
+            ys = ' '.join(xs[2:])
+            e = LambdaExpression(ys, id_prefix=str(variableSeed), lookup=glob_dict)
+            variableSeed += 1
+            # print e.beta
+            print e.toString(ids=False)
+            glob_dict[xs[0]] = e.beta
+            return
 
     def do_EOF(self, line):
         return True
+
 
 if __name__ == '__main__':
     LambdaEvaluator().cmdloop()

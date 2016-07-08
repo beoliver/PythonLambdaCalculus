@@ -77,10 +77,12 @@ def replace_var(e, var, term):
 
 ########################################################################################
 
-def alpha_conversion(e):
+def alpha_conversion(e, id_prefix=''):
+    # id_prefix is an additional string that is will be inserted at the beginning of the
+    # unique id. This should allow for globally unique naming.
     def alpha_conversion_r(e, mappings, depth):
         if type(e) == tuple:
-            eid = e[0] + "_" + str(depth)
+            eid = e[0] + "_" + id_prefix + ":" + str(depth)
             mappings[e[0]] = eid
             return (eid, alpha_conversion_r(e[1], mappings, depth+1))
         if type(e) == str:
@@ -117,16 +119,43 @@ def beta_reduction(e):
 
 ########################################################################################
 
+def internal_replacement(e, lookup):
+    if not lookup:
+        return e
+    # return a copy of the internal tree, replacing all occurances of
+    # free variables with values from LOOKUP (if they exist)
+    # the internal representations in lookup may be beta reductions.
+    # the internal representations in lookup must be alpha converted and include unique ids
+    # if we ASSUME that all variables are globally unique, then this process
+    # should happen after alpha conversion!
+    # bound is the set of bound variables
+    bound = set()
+    def ir(e):
+        if type(e) == tuple:
+            bound.add(e[0])
+            return (e[0], ir(e[1]))
+        if type(e) == str:
+            return lookup.get(e,e) if e not in bound else e
+        if type(e) == list:
+            return map(lambda x : ir(x), e)
+    return ir(e)
+
+########################################################################################
+
 
 class LambdaExpression(object):
     """
     a simple wrapper for lambda expressions. Allows us to keep multiple
     representations at the same time etc.
     """
-    def __init__(self,s):
-        self.internal = beta_reduction(alpha_conversion(internalize(s)))
-    def toString(self):
-        return internal_to_string(self.internal,ids=False) if self.internal else ''
+    def __init__(self,s,id_prefix='',lookup=None):
+        self.alpha = internal_replacement(alpha_conversion(internalize(s), id_prefix=id_prefix), lookup)
+        self.beta  = beta_reduction(self.alpha)
+    def toString(self,ids=False,alpha=False):
+        if alpha:
+            return internal_to_string(self.alpha,ids=ids)
+        else:
+            return internal_to_string(self.beta,ids=ids)
 
 
 if __name__ == '__main__':
