@@ -3,6 +3,14 @@ import sys
 
 ########################################################################################
 ########################################################################################
+# TO DO
+# FIX VARIABLE RENAMING... THERE ARE STILL PROBLEMS WIH SHADOWING
+# becomes apparrent when using the lambdaInterpreter which allows us to save definitions
+# after defining cons, car and cdr   car (cdr (cons 1 (cons 2 nil))) does not return 2
+# if we define cons,car,cdr,cons2 with unique names it does
+# i'm assuming the problem is in the call of (cons 1 (cons 2 nil))
+# as it works with uniquely defined cons1 and cons2
+########################################################################################
 ########################################################################################
 
 def tokenize(input_string):

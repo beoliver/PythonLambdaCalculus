@@ -2,8 +2,21 @@
 import sys
 from cleanLambdaCalculus import LambdaExpression
 import readline
-
 import cmd
+
+########################################################################################
+########################################################################################
+# TO DO
+# FIX VARIABLE RENAMING... THERE ARE STILL PROBLEMS WIH SHADOWING
+# after defining cons, car and cdr   car (cdr (cons 1 (cons 2 nil))) does not return 2
+# if we define cons,car,cdr,cons2 with unique names it does
+# i'm assuming the problem is in the call of (cons 1 (cons 2 nil))
+# as it works with uniquely defined cons1 and cons2
+# this is problem with cleanLambda.py, but we need to be aware of it as it means
+# we are NOT getting fully correct results
+########################################################################################
+########################################################################################
+
 
 header1 = """
     \\\\      |
