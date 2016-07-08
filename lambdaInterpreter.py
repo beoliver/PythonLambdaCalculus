@@ -26,7 +26,11 @@ class LambdaEvaluator(cmd.Cmd):
 
     def default(self, line):
         global variableSeed
-        e = LambdaExpression(line, id_prefix=str(variableSeed), lookup=glob_dict)
+        try:
+            e = LambdaExpression(line, id_prefix=str(variableSeed), lookup=glob_dict)
+        except ValueError as e:
+            print e
+            return
         variableSeed += 1
         # print e.beta
         print e.toString(ids=False)
@@ -42,7 +46,11 @@ class LambdaEvaluator(cmd.Cmd):
             return
         else:
             ys = ' '.join(xs[2:])
-            e = LambdaExpression(ys, id_prefix=str(variableSeed), lookup=glob_dict)
+            try:
+                e = LambdaExpression(ys, id_prefix=str(variableSeed), lookup=glob_dict)
+            except ValueError as e:
+                print e
+                return
             variableSeed += 1
             # print e.beta
             print e.toString(ids=False)
