@@ -1,0 +1,29 @@
+
+assumptions.
+1. we have a global counter than increases infinitely
+2. we have local counters that always start from 0
+
+for any expression e with n insertions e_1 to e_n
+1. the insertions are beta reduced and in their "normal form" (evaluated as far as possible, all variables indexed from 0)
+2. the expression e is not yet reduced (it is user input)
+
+1. we alpha convert e using the global counter
+2. for each expression to insert we alpha convert using the global counter and directly insert in place/swap for the symbol.
+3. beta reduce
+4. convert to normal form.
+
+Question. can we ever reset the global counter?
+Answer. Yes. As we reduce all expressions down to a kind of "normal form" all we need to know 
+is the how many variables each function has. We choose a number greater than the max, and we are good to go.
+This information can be returned each time we normalize (just return the counter value) store this, then we dont need
+to traverse all saved expressions. 
+
+
+every subexpression to be inserted into a an existing expression is alpha converted to unique ids
+after all subexpressions have been inserted we alpha convert again
+the resulting expression is completely unique!
+we now beta reduce.
+convert beta reduction into normalized (x's indexed from 0) form.
+we can now compare reduced expressions as is they are the same they will be identical!
+
+
